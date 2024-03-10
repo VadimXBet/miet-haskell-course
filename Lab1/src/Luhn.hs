@@ -10,5 +10,24 @@ module Luhn where
 -- Не пытайтесь собрать всё в одну функцию, используйте вспомогательные.
 -- Например: разбить число на цифры (возможно, сразу в обратном порядке).
 -- Не забудьте добавить тесты, в том числе для вспомогательных функций!
+toInt :: String -> Int
+toInt x = read x :: Int
+
+numberDivider :: Int -> Int -> [Int]
+numberDivider _ 0 = []
+numberDivider number counter = (number `mod` 10) : numberDivider (number `div` 10) (counter-1)
+
+doubleNumbers :: [Int] -> [Int]
+doubleNumbers (first:second:mas) = first : (2*second `mod` 9) : doubleNumbers mas
+doubleNumbers [var] = var : []
+doubleNumbers [] = []
+
+readNumber :: String -> [Int]
+readNumber number = numberDivider (toInt number) (length number)
+
+answer :: [Int] -> Bool
+answer mas | (sum mas) `mod` 10 == 0 = True
+           | otherwise = False
+
 isLuhnValid :: Int -> Bool
-isLuhnValid = error "todo"
+isLuhnValid x = answer (doubleNumbers (readNumber (show x)))
