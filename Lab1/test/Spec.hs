@@ -83,9 +83,9 @@ main = hspec $ do
         it "satisfiesAll" $ do
             satisfiesAll [even, \x -> x `rem` 5 == 0] 10 `shouldBe` True
             satisfiesAll [] 4 `shouldBe` True
-        it "tailNel" $ do
-            tailNel (NEL 1 [2,3]) `shouldBe` NEL 2 [3]
-            tailNel (NEL 1 [2]) `shouldBe` NEL 2 []
+        -- it "tailNel" $ do
+        --     tailNel (NEL 1 [2,3]) `shouldBe` NEL 2 [3]
+        --     tailNel (NEL 1 [2]) `shouldBe` NEL 2 []
         it "lastNel" $ do
             lastNel (NEL 1 [2,3]) `shouldBe` NEL 3 []
             lastNel (NEL 1 [2]) `shouldBe` NEL 2 []

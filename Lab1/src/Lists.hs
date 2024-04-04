@@ -61,7 +61,9 @@ find, findLast :: (a -> Bool) -> [a] -> Maybe a
 --          | otherwise = Nothing
 
 -- Рекурсивная реализация
-find f xs = if null (tail xs) then Nothing else (if f (head xs) then (Just (head xs)) else find f (tail xs))
+find f [] = Nothing
+find f (x:xs) | f x = Just x
+              | otherwise = find f xs
 
 -- Реализация через filter
 -- findLast f x | (length (filter f x)) > 0 = Just $ last (filter f x)
@@ -104,17 +106,14 @@ lastNel (NEL a []) = error "Empty tail"
 lastNel (NEL a [aa]) = (NEL aa [])
 lastNel (NEL a bs) = lastNel (NEL a (tail bs)) 
 
-tailNel :: NEL a -> NEL a
-tailNel (NEL _ []) = error "Empty NEL"
-tailNel (NEL _ b) = (NEL (head b) (tail b))
+tailNel :: NEL a -> [a]
+tailNel (NEL x xs) = xs
 
 zipNel :: NEL a -> NEL b -> NEL (a, b)
 zipNel a b = listToNel $ zip (nelToList a) (nelToList b) 
 
-
 listToNel :: [a] -> NEL a
 listToNel (x:xs) = NEL x xs 
-listToNel [] = error "Empty list" --NEL undefined []
 
 
 nelToList :: NEL a -> [a]

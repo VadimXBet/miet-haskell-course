@@ -59,8 +59,8 @@ rbgToCmyk color = new_color where
 -- используйте рекурсию
 -- не забудьте случаи n < 0 и n == 0.
 geomProgression :: Double -> Double -> Integer -> Double
-geomProgression b q 0 = b
-geomProgression b q n | n < 0 = error "arg n must be > 0"
+geomProgression b _ 0 = b
+geomProgression b q n | n < 0 = error "arg n must be non-negative"
                       | otherwise = geomProgression (b * q) q (n - 1)
 
 -- coprime a b определяет, являются ли a и b взаимно простыми
@@ -83,7 +83,5 @@ myGcd 0 _ = 0
 myGcd x y = myGcd y (x `mod` y)
 
 coprime :: Integer -> Integer -> Bool
-coprime a b | (myGcd a b == 1) = True
-            | (myGcd a b == -1) = True
-            | (myGcd a b /= 1) = False
-            | (myGcd a b /= -1) = False
+coprime a b | ( abs (myGcd a b) == 1) = True
+            | otherwise = False
