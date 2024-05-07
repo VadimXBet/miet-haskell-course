@@ -28,6 +28,12 @@ main = hspec $ do
         it "nderiv" $ do 
             nderiv 3 (P [2, 2, 1, 4, 3]) `shouldBe` (P [24, 72])
             nderiv 2 (P [2, 7, 7, 2]) `shouldBe` (P [14, 12])
+
+        it "newton" $ do 
+            newton (P [-1, 0, 1]) 2 0.001 9 `shouldBe` Just 1.0003048780487804
+            newton (P [-3, 4, 0, 1]) 0.7 0.001 15 `shouldBe` Just 0.6735930845595811
+            newton (P [2, -2, 0, 1]) 0 0.001 20 `shouldBe` Nothing
+
     describe "simpleLang" $ do
         -- включите тесты на работу 
         it "empty" $ do

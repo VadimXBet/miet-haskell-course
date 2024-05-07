@@ -113,3 +113,11 @@ polyDiffer (p:ps) n = (p*n) : polyDiffer ps (n + 1)
 instance Num a => Differentiable (Poly a) where
     deriv (P []) = P []
     deriv (P p) = P (polyDiffer (tail p) 1)
+
+-- Дополнительное задание -----------------------------
+
+-- Метод Ньютона
+newton :: (Floating a, Ord a) => Poly a -> a -> a -> Integer -> Maybe a
+newton (P p) x0 eps n | n == 0 = Nothing
+                      | abs (applyPoly (P p) x0) < eps = Just x0
+                      | otherwise = newton (P p) (x0 - ((applyPoly (P p) x0) / (applyPoly (deriv (P p)) x0))) eps (n - 1)
