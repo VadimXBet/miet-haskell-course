@@ -45,18 +45,29 @@ type State = String -> Int
 
 -- в начальном состоянии все переменные имеют значение 0
 empty :: State
-empty = undefined
+empty = const 0
 
 -- возвращает состояние, в котором переменная var имеет значение newVal, 
 -- все остальные -- то же, что в state
 extend :: State -> String -> Int -> State
-extend state var newVal = undefined
+extend state var newVal inp = if inp /= var then state inp else newVal
 
 -- Задание 2 -----------------------------------------
 
 -- возвращает значение выражения expr при значениях переменных из state.
 eval :: State -> Expression -> Int
-eval state expr = undefined
+eval state (Var a) = state a
+eval _ (Val a) = a
+eval state (Op a oper b) = case oper of
+        Plus -> (eval state a) + (eval state b)
+        Minus -> (eval state a) - (eval state b)
+        Times -> (eval state a) * (eval state b)
+        Divide -> (eval state a) `div` (eval state b)
+        Gt -> fromEnum ((eval state a) > (eval state b))
+        Ge -> fromEnum ((eval state a) >= (eval state b))
+        Lt -> fromEnum ((eval state a) < (eval state b))
+        Le -> fromEnum ((eval state a) <= (eval state b))
+        Eql -> fromEnum ((eval state a) == (eval state b))
 
 -- Задание 3 -----------------------------------------
 
@@ -72,14 +83,25 @@ data DietStatement = DAssign String Expression
 
 -- упрощает программу Simple
 desugar :: Statement -> DietStatement
-desugar = undefined
+desugar (Assign a exp) = DAssign a exp
+desugar (Incr a) = DAssign a (Op (Var a) Plus (Val 1))
+desugar (If exp state1 state2) = DIf exp (desugar state1) (desugar state2)
+desugar (While exp state1) = DWhile exp (desugar state1)
+desugar Skip = DSkip
+desugar (Block []) = DSkip
+desugar (Block (state1 : states)) = DSequence (desugar state1) (desugar (Block states))
+desugar (For state exp state1 state2) = DSequence (desugar state) (DWhile exp (DSequence (desugar state2) (desugar state1)))
 
 -- Задание 4 -----------------------------------------
 
 -- принимает начальное состояние и программу Simpler
 -- и возвращает состояние после работы программы
 runSimpler :: State -> DietStatement -> State
-runSimpler = undefined
+runSimpler state (DAssign a exp) = extend state a (eval state exp)
+runSimpler state (DIf exp state1 state2) = if eval state exp == 1 then runSimpler state state1 else runSimpler state state2
+runSimpler state DSkip = state
+runSimpler state (DWhile exp state1) = if eval state exp == 1 then runSimpler (runSimpler state state1) (DWhile exp state1) else state
+runSimpler state (DSequence state1 state2) = runSimpler (runSimpler state state1) state2
 
 -- 
 -- in s "A" ~?= 10
@@ -87,7 +109,7 @@ runSimpler = undefined
 -- принимает начальное состояние и программу Simple
 -- и возвращает состояние после работы программы
 run :: State -> Statement -> State
-run = undefined
+run state state1 = runSimpler state (desugar state1)
 
 -- Программы -------------------------------------------
 
@@ -113,7 +135,9 @@ factorial = For (Assign "Out" (Val 1))
    B := B - 1
 -}
 squareRoot :: Statement
-squareRoot = undefined
+squareRoot = Block [Assign "B" (Val 0),
+                    While (Op (Var "A") Ge (Op (Var "B") Times (Var "B"))) (Assign "B" (Op (Var "B") Plus (Val 1))),
+                    Assign "B" (Op (Var "B") Minus (Val 1))]
 
 {- Вычисление числа Фибоначчи
 
@@ -135,4 +159,15 @@ squareRoot = undefined
    }
 -}
 fibonacci :: Statement
-fibonacci = undefined
+fibonacci = Block [Assign "F0" (Val 1),
+                   Assign "F1" (Val 1),
+                   If (Op (Var "In") Eql (Val 0))
+                       (Assign "Out" (Var "F0"))
+                       (If (Op (Var "In") Eql (Val 1))
+                           (Assign "Out" (Var "F1"))
+                           (For (Assign "C" (Val 2)) (Op (Var "C") Le (Var "In"))
+                                (Assign "C" (Op (Var "C") Plus (Val 1)))
+                                (Block [Assign "T" (Op (Var "F0") Plus (Var "F1")),
+                                        Assign "F0" (Var "F1"),
+                                        Assign "F1" (Var "T"),
+                                        Assign "Out" (Var "T")])))]
