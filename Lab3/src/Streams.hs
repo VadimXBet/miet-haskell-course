@@ -2,6 +2,8 @@
 module Streams where
 
 import Data.List(intercalate)
+import Test.QuickCheck
+import Test.QuickCheck.Classes
 
 -- Задание 1 -----------------------------------------
 
@@ -17,13 +19,14 @@ instance Show a => Show (Stream a) where
 
 -- Реализуйте функцию, превращающую поток в (бесконечный) список
 streamToList :: Stream a -> [a]
-streamToList = undefined
+streamToList (x :> xs) = x : streamToList xs
 
 -- функция, возвращающая n первых элементов потока
 -- удобна для написания тестов следующих функций
 sTake :: Int -> Stream a -> [a]
-sTake = undefined
-
+sTake n s | n <= 0 = [] 
+          | n > 0 = take n (streamToList s)
+          
 -- Задание 2 -----------------------------------------
 
 -- Реализуйте несколько простых функций для работы с потоками
@@ -31,7 +34,7 @@ sTake = undefined
 
 -- поток, состоящий из одинаковых элементов
 sRepeat :: a -> Stream a
-sRepeat = undefined
+sRepeat x = x :> sRepeat x
 
 -- sRepeat 1 == [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...
 
@@ -40,19 +43,19 @@ sRepeat = undefined
 -- будет циклическим (ссылаться сам на себя), а не бесконечно растущим)
 -- sCycle [1, 2, 3] == [1, 2, 3, 1, 2, 3, 1, 2, 3, 1, ...
 sCycle :: [a] -> Stream a
-sCycle = undefined
+sCycle xs = foldr (:>) (sCycle xs) xs
 
 -- поток, заданный начальным значением и функцией, строящей следующее значение
 -- по текущему
 -- sIterate (/ 2) 1.0 == [1.0, 0.5, 0.25, 0.125, 0.0625, ...
 sIterate :: (a -> a) -> a -> Stream a
-sIterate = undefined
+sIterate f x = x :> sIterate f (f x)
 
 -- функция, возвращающая поток из чередующихся элементов двух потоков
 -- (для следующего задания нужно сделать эту функцию ленивой по
 -- второму аргументу, то есть не сопоставлять его с образцом)
 sInterleave :: Stream a -> Stream a -> Stream a
-sInterleave (_ :> _) _ = undefined
+sInterleave (x :> xs) ys = x :> sInterleave ys xs
 
 -- sInterleave (sRepeat 1) (sRepeat 2) == [1, 2, 1, 2, 1, 2, ...
 
@@ -62,7 +65,7 @@ sInterleave (_ :> _) _ = undefined
 
 -- поток натуральных чисел (начиная с 0)
 nats :: Stream Integer
-nats = undefined
+nats = sIterate (+ 1) 0
 
 -- nats == [0, 1, 2, 3, 4, 5, 6, 7, ...
 
@@ -71,15 +74,16 @@ nats = undefined
 -- проверок на делимость, если её реализация ленива по второму аргументу
 -- (подумайте, почему это важно).
 ruler :: Stream Integer
-ruler = undefined
+ruler = rulerHelper 0 where
+        rulerHelper n = sInterleave (sRepeat n) (rulerHelper (n + 1))
 
 -- ruler == [0, 1, 0, 2, 0, 1, 0, 3, ...
 
 -- Задание 4 -----------------------------------------
 
 minMaxSlow, minMax, minMaxBang :: Ord a => [a] -> Maybe (a, a)
-{- -O0: Total time: ??? Total Memory in use: ??? -}
-{- -O2: Total time: ??? Total Memory in use: ??? -}
+{- -O0: Total time: 0.125s Total Memory in use: 49 -}
+{- -O2: Total time: 0.141s Total Memory in use: 43 -}
 minMaxSlow [] = Nothing
 minMaxSlow xs = Just (minimum xs, maximum xs)
 
@@ -88,16 +92,17 @@ minMaxSlow xs = Just (minimum xs, maximum xs)
 -- и поэтому вынуждена сохранять его в памяти целиком. Реализуйте minMax так, чтобы
 -- сделать только один проход по списку.
 
-{- -O0: Total time: ??? Total Memory in use: ??? -}
-{- -O2: Total time: ??? Total Memory in use: ??? -}
-minMax = undefined
+{- -O0: Total time: 0.766s Total Memory in use: 210 -}
+{- -O2: Total time: 0.500s Total Memory in use: 180 -}
+minMax [] = Nothing
+minMax (x:xs) = Just $ foldl (\(min', max') y -> (min min' y, max max' y)) (x, x) xs
 
 -- Дополнительное задание: реализуйте ту же самую функцию (под названием minMaxBang) с
 -- использованием явной строгости (seq и/или !)
 
-{- -O0: Total time: ??? Total Memory in use: ??? -}
-{- -O2: Total time: ??? Total Memory in use: ??? -}
-minMaxBang = undefined
+{- -O0: Total time: 0.781s Total Memory in use: 210 -}
+{- -O2: Total time: 0.531s Total Memory in use: 180 -}
+minMaxBang xs = minMax $! xs
 
 -- Скомпилируйте программу с аргументами `ghc Streams.hs -O2 -rtsopts -main-is Streams`
 -- и запустите `Streams.exe +RTS -s` (`./Streams +RTS -s` в Linux/OSX).
@@ -106,15 +111,50 @@ minMaxBang = undefined
 -- Также посмотрите на эффект при отключении оптимизаций (-O0)
 
 main :: IO ()
-main = print $ minMaxSlow $ sTake 1000000 $ ruler
+-- main = print $ minMaxSlow $ sTake 1000000 $ ruler
 -- main = print $ minMax $ sTake 1000000 $ ruler
--- main = print $ minMaxBang $ sTake 1000000 $ ruler
+main = print $ minMaxBang $ sTake 1000000 $ ruler
 
 -- Задание 5 -----------------------------------------
 
 -- Добавьте тесты свойств (на QuickCheck или Hedgehog) для функций из заданий 1--4.
 -- http://hackage.haskell.org/package/QuickCheck
 -- https://github.com/hedgehogqa/haskell-hedgehog
+
+instance Arbitrary a => Arbitrary (Stream a) where
+    arbitrary = do
+        x <- arbitrary
+        xs <- arbitrary
+        return (x :> xs)
+
+sTake_test :: Int -> Stream Integer -> Bool
+sTake_test n xs | n > 0 = length (sTake n xs) == n
+                | n <= 0 = length (sTake n xs) == 0
+
+sRepeat_test :: Integer -> Int -> Bool
+sRepeat_test a n = if n <= 0 then True else all (== a) (sTake n (sRepeat a)) == True
+
+sCycle_test :: Int -> [Int] -> Bool
+sCycle_test n xs | (n > 0) && (length xs > 0) = sTake n (sCycle xs) == take n (cycle xs)
+                 | (n <= 0) || (length xs == 0) = True
+
+sIterate_test :: (Int -> Int) -> Int -> Int -> Bool
+sIterate_test f x n = if n <= 0 then True else sTake n (sIterate f x) == take n (iterate f x)
+
+sInterleave_test :: Int -> Stream Integer -> Stream Integer -> Bool
+sInterleave_test n xs ys = if n <= 0 then True else foldl1 (+) (sTake (2*n) (sInterleave xs ys)) == (foldl1 (+) (sTake n xs)) + (foldl1 (+) (sTake n ys))
+
+nats_test :: Int -> Bool
+nats_test n = sTake n nats == take n (iterate (+ 1) 0)
+
+ruler_test :: Int -> Bool
+ruler_test n = sTake n ruler == take n (streamToList ruler)
+
+minMax_test :: [Int] -> Bool
+minMax_test xs = minMaxSlow xs == minMax xs
+
+minMaxBang_test :: [Int] -> Bool
+minMaxBang_test xs = minMaxSlow xs == minMaxBang xs
 
 -- Задание 6 -----------------------------------------
 
@@ -128,26 +168,28 @@ main = print $ minMaxSlow $ sTake 1000000 $ ruler
 -- или http://hackage.haskell.org/package/hedgehog-classes, если в предыдущем задании использовали Hedgehog.
 
 instance Functor Stream where
-    fmap = undefined
+    fmap f (x :> xs) = f x :> fmap f xs
 
 instance Applicative Stream where
-    pure = undefined
-    (<*>) = undefined
+    pure x = sRepeat x
+    (f :> fs) <*> (x :> xs) = f x :> (fs <*> xs)
 
 instance Monad Stream where
     return = pure
     -- в этом случае может быть проще использовать реализацию через join
     -- xs >>= f = join ... where join = ...
-    (>>=) = undefined
+    x >>= f = join (fmap f x)
+            where
+                join (y :> ys) = (head $ sTake 1 y) :> (join ys)
 
 -- https://hackage.haskell.org/package/base-4.12.0.0/docs/Data-Foldable.html
 instance Foldable Stream where
     -- достаточно определить одну из них
     -- foldr = undefined
-    -- foldMap = undefined
+    foldMap f (x :> xs) = f x <> foldMap f xs
 
 -- https://hackage.haskell.org/package/base-4.12.0.0/docs/Data-Traversable.html
 instance Traversable Stream where
     -- достаточно определить одну из них
     -- traverse = undefined
-    -- sequenceA = undefined
+    sequenceA (x :> xs) = (:>) <$> x <*> sequenceA xs
